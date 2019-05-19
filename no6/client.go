@@ -10,7 +10,6 @@ import (
 	"net/http/cookiejar"
 	"net/url"
 	"os"
-	"path"
 	"regexp"
 	"strconv"
 	"strings"
@@ -83,24 +82,19 @@ func (c *Client) login(config Config) error {
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	res, err := c.client.Do(req)
+	resp, err := c.client.Do(req)
 	if err != nil {
-		fmt.Println(res.StatusCode)
+		fmt.Println(resp.StatusCode)
 		return err
 	}
-	if res.Request.URL.Path != "/home" {
+	defer resp.Body.Close()
+
+	if resp.Request.URL.Path != "/home" {
 		return errors.New("ログインセッションに失敗しました")
 	}
 
 	return nil
 }
-
-var (
-	// ArchivesDir 変数はDLしたアーカイブページを保存するディレクトリを指定します
-	ArchivesDir = "archives"
-	// FilenameFMT 変数はDLしたアーカイブページのファイル名フォーマットを指定します。一か所の整数の置換を含む必要があります
-	FilenameFMT = "page_%03d.html"
-)
 
 // GetALLArchivesPage 関数は公式HP上のすべてのアーカイブページをローカルに保存します
 func (c *Client) GetALLArchivesPage() error {
@@ -109,17 +103,19 @@ func (c *Client) GetALLArchivesPage() error {
 	if err != nil {
 		return err
 	}
-	res, err := c.client.Do(req)
+	resp, err := c.client.Do(req)
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 
-	filename := fmt.Sprintf(FilenameFMT, 1)
-	f, err := os.Create(path.Join(ArchivesDir, filename))
+	f, err := openArchivesPageStoreFile(1)
 	if err != nil {
 		return err
 	}
-	io.Copy(f, res.Body)
+	defer f.Close()
+
+	io.Copy(f, resp.Body)
 
 	f.Seek(0, os.SEEK_SET)
 	n, err := extractLastPage(f)
@@ -140,20 +136,23 @@ func (c *Client) GetALLArchivesPage() error {
 func (c *Client) getArchivesPage(n int) error {
 	url := protocol + host + archivesPage
 	req, err := http.NewRequest(http.MethodGet, url, http.NoBody)
+	if err != nil {
+		return err
+	}
 	req.URL.RawQuery = fmt.Sprintf("page=%d", n)
+	resp, err := c.client.Do(req)
 	if err != nil {
 		return err
 	}
-	res, err := c.client.Do(req)
+	defer resp.Body.Close()
+
+	f, err := openArchivesPageStoreFile(n)
 	if err != nil {
 		return err
 	}
-	filename := fmt.Sprintf(FilenameFMT, n)
-	f, err := os.Create(path.Join(ArchivesDir, filename))
-	if err != nil {
-		return err
-	}
-	io.Copy(f, res.Body)
+	defer f.Close()
+
+	io.Copy(f, resp.Body)
 
 	return nil
 }
@@ -168,6 +167,9 @@ func extractLastPage(r io.Reader) (int, error) {
 			}
 			return extractPage(scanner.Text()), nil
 		}
+	}
+	if err := scanner.Err(); err != nil {
+		return 0, err
 	}
 	return 0, errors.New("response body has not page last")
 }
@@ -186,6 +188,7 @@ func (c *Client) getCsrf() (param, token string, err error) {
 	case resp.Body == nil:
 		return "", "", errors.New("response body is nil")
 	}
+	defer resp.Body.Close()
 
 	return extractCsrf(resp.Body)
 }
@@ -213,7 +216,7 @@ func extractCsrf(r io.Reader) (param, token string, err error) {
 }
 
 var (
-	contentRegexp = regexp.MustCompile(`content=".+"`)
+	contentRegexp = regexp.MustCompile(`content=".+?"`)
 	numberRegexp  = regexp.MustCompile(`\d+`)
 )
 
