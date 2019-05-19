@@ -41,6 +41,11 @@ func (a *archiveInfo) checkField() error {
 }
 
 func openArchivesPageStoreFile(n int) (*os.File, error) {
+	if _, err := os.Stat(ArchivesDir); err != nil {
+		if err := os.Mkdir(ArchivesDir, 660); err != nil {
+			fmt.Println(err)
+		}
+	}
 	filename := fmt.Sprintf(FilenameFMT, n)
 	return os.Create(path.Join(ArchivesDir, filename))
 }
