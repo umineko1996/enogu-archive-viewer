@@ -29,9 +29,17 @@ func handler(w http.ResponseWriter, r *http.Request) {
 func getMethodHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println(r.URL.Path)
 	targetPath := r.URL.Path
+
+	// pathがRestAPIを指定している場合はapiの処理を行う
+	if api := getGetMethodAPI(targetPath); api != nil {
+		api.Do(w, r)
+		return
+	}
+
 	if targetPath == "" || targetPath == "/" {
 		targetPath = "index.html"
 	}
+
 	fpath := filepath.Join(routePath, targetPath)
 	log.Println(fpath)
 	if !strings.HasPrefix(fpath, routePath) {
@@ -49,4 +57,38 @@ func getMethodHandler(w http.ResponseWriter, r *http.Request) {
 	if _, err = io.Copy(w, f); err != nil {
 		log.Println(err)
 	}
+}
+
+type RestAPI interface {
+	Do(w http.ResponseWriter, r *http.Request)
+}
+
+type RestAPIFunc func(w http.ResponseWriter, r *http.Request)
+
+func (rf RestAPIFunc) Do(w http.ResponseWriter, r *http.Request) {
+	rf(w, r)
+	return
+}
+
+func getGetMethodAPI(path string) RestAPI {
+	switch path {
+	case "/search":
+		return RestAPIFunc(searchAPI)
+	default:
+		return nil
+	}
+}
+
+func searchAPI(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+	log.Println(query)
+
+	words := query.Get("w")
+	if len(words) == 0 {
+		http.Error(w, `please "w" query`, http.StatusBadRequest)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	io.WriteString(w, `{"videos" : [{"url": "test1"}, {"url": "test2"}]}`)
 }
