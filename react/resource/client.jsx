@@ -1,13 +1,13 @@
 function App() {
-  const [videos, setVideos] = React.useState([{url: `first.com`}, {url: `second.com`}]);
+  const [videos, setVideos] = React.useState([]);
   // ここは基本値の受け渡し（更新）だけの予定
   // videos が関数から渡される値、prevが以前の値
-  const updateVideos = React.useCallback((videos) => setVideos((prev) => [...prev, ...videos]), [setVideos]);
+  const updateVideos = React.useCallback((videos) => setVideos(() => videos), [setVideos]);
 
   return (
     <div>
-      <p>Hello World!</p>
       <SearchVideo updateVideoList={updateVideos}/>
+      <h2 className='content-title content-title_archive'>動画アーカイブ</h2>
       <VideoBoxList videos = {videos}/>
     </div>
   );
@@ -40,14 +40,25 @@ function SearchVideo(props) {
 function VideoBoxList(props) {
   const videoBoxList = props.videos.map((v) => (
     // TODO keyは動画で一意の値に
-    <VideoBox key={v.url} video = {v}/>
+    <VideoBox key={v.id} video = {v}/>
   ));
-  return <div> {videoBoxList} </div>;
+  return (
+    <div class='contents'>
+      <ul className='archive-items'> {videoBoxList} </ul>
+    </div>
+  );
 }
 
 function VideoBox(props) {
   // TODO ここでvideos変数の整形をする
-  return <li>{props.video.url}</li>;
+  let v = props.video
+  return (
+    <li className='archive-items_item'><a target="_blank" href={v.url}>
+      <div className='archive-item_thumbnail'><img src={v.thumbnail} /></div>
+      <h3 className='archive-item_title'>{v.title}</h3>
+      <div className='archive-item_published-date'>{v.date}</div>
+    </a></li>
+  );
 }
 
 const server = `localhost:6060`
@@ -67,10 +78,15 @@ function getVideos(word) {
 }
 
 function convVideos(jsonData) {
-  const videos = jsonData.videos.map((v) => {
+  //console.log(jsonData)
+  const videos = jsonData.Videos.map((v) => {
+    //console.log(v)
   const video = {
-      // TODO 必要な情報を入れる
-      url: v.url
+      title: v.Title,
+      url: v.URL,
+      thumbnail: v.Thumbnail,
+      id: v.ID,
+      date: v.PublishedDate
     }
     return video;
   });

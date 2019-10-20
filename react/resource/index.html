@@ -1,16 +1,45 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <!-- React用 -->
     <script src="https://unpkg.com/react@16/umd/react.development.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@16/umd/react-dom.development.js" crossorigin></script>
     <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+
+    <meta content='text/html; charset=UTF-8' http-equiv='Content-Type'>
+    <meta charset='utf-8'>
+    <meta content='width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover' name='viewport'>
+    <link rel="stylesheet" media="all" href="/assets/application-4b46eb12d8c7da1e1586ea0b7d7a6c9a0d0c17fdfdb729ce7897a86aaf985da4.css" data-turbolinks-track="reload" />
+    <script src="/assets/application-6e438b307bf4ec2b96355941f40b2eecec0f12239862748a7017b5aaab2295a4.js" data-turbolinks-track="reload"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'UA-104370994-2');
+    </script>
+
+  <h1>Archive Viewer</h1>
   </head>
-  <body>
-    <h1>Archive Viewer</h1>
+  <body class='archives lemon' lang='ja'>
+  <div class='container'>
+  <div class='drawer'>
+  <div class='title-logo'>
+  <a href="/home">えのぐ公式ファンクラブ -No,6-</a>
+  </div>
+  <div class='list-group'>
+  <a class="list-group-item list-group-item-action d-flex align-items-center group1" href="/home"><span class='icon'>
+  <img src="/assets/components/drawer/ic_drawer_home-1531f8bbb1445531a0398b5b46c98bdb3e2383b45cddf21cbd9e6be5eb540fd5.svg" />
+  </span>
+  </a></div>
+  </div>
+
     <div id="app"></div><!-- ←ここに埋め込まれる -->
 
     <!-- 以下、Reactのプログラム -->
     <!-- (jsxを使っているのでtext/jsxと書く) -->
     <script type="text/jsx" src="client.jsx"></script>
+
+
   </body>
 </html>
