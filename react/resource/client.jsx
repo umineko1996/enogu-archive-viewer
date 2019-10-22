@@ -30,9 +30,13 @@ function SearchVideo(props) {
 
   // inputのフィールドをリターンする
   return (
-    <div>
-      <div><input className="search-form" ref={inputRef}></input></div>
-      <div><button onClick={createVideoBox} className="search">Search</button></div>
+    <div className="bordered-box">
+      <h2>検索</h2>
+      <div className='form-group'>
+        <label for="search-word">検索ワード</label>
+        <input className="form-control" required="required" placeholder="栗原桜子" ref={inputRef}></input>
+      </div>
+        <input onClick={createVideoBox} type="submit" name="search" value="表示" data-disable-with="表示" />
     </div>
   );
 }
