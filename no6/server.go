@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/gocarina/gocsv"
@@ -22,7 +23,7 @@ func Listen() error {
 var routePath = filepath.Clean("./react/resource")
 
 func handler(w http.ResponseWriter, r *http.Request) {
-	log.Println(r.URL.Path)
+	//log.Println(r.URL.Path)
 	switch r.Method {
 	case http.MethodGet:
 		getMethodHandler(w, r)
@@ -32,7 +33,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func getMethodHandler(w http.ResponseWriter, r *http.Request) {
-	log.Println(r.URL.Path)
+	// log.Println(r.URL.Path)
 	targetPath := r.URL.Path
 
 	// pathがRestAPIを指定している場合はapiの処理を行う
@@ -46,7 +47,7 @@ func getMethodHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fpath := filepath.Join(routePath, targetPath)
-	log.Println(fpath)
+	// log.Println(fpath)
 	if !strings.HasPrefix(fpath, routePath) {
 		http.Error(w, "permission denied.", http.StatusForbidden)
 		return
@@ -99,12 +100,23 @@ func getGetMethodAPI(path string) RestAPI {
 }
 
 func searchAPI(w http.ResponseWriter, r *http.Request) {
+	log.Println(r.URL.Path)
 	query := r.URL.Query()
 	log.Println(query)
 
 	words := query.Get("w")
 	if words == "" {
 		http.Error(w, `please "w" query`, http.StatusBadRequest)
+		return
+	}
+
+	p := query.Get("page")
+	if p == "" || p == "0" {
+		p = "1"
+	}
+	page, err := strconv.Atoi(p)
+	if err != nil {
+		http.Error(w, `"page" query must number`, http.StatusBadRequest)
 		return
 	}
 
@@ -122,21 +134,33 @@ func searchAPI(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	pageSize := 20 // 一ページ当たりのデータ数
 	var response = struct {
-		Videos []*archiveInfo
-		Len    int
+		Videos   []*archiveInfo
+		Total    int
+		Page     int
+		LastPage int
+		token    int // TODO 検索スキップする数
 	}{
-		Videos: make([]*archiveInfo, 0, 20),
-		Len:    0,
+		Videos: make([]*archiveInfo, 0, pageSize),
+		Page:   page,
 	}
 
-	for _, archive := range archivesInfo {
+	end := response.Page * pageSize
+	offset := end - pageSize
+	for _, archive := range archivesInfo[response.token:] {
 		// TODO しっかり治す
 		if strings.Contains(archive.Title, words) {
-			response.Videos = append(response.Videos, archive) // サイズ合わせてる
-			if response.Len++; response.Len >= 20 {
-				break
+			if response.Total >= offset && response.Total < end {
+				response.Videos = append(response.Videos, archive) // サイズ合わせてる
 			}
+			response.Total++
+		}
+	}
+	if response.Total != 0 {
+		response.LastPage = response.Total / pageSize
+		if response.Total%20 != 0 {
+			response.LastPage++
 		}
 	}
 	body, err := json.Marshal(response)
@@ -148,5 +172,5 @@ func searchAPI(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	fmt.Println(string(body))
 	w.Write(body)
-	//io.WriteString(w, `{"videos" : [{"url": "test1"}, {"url": "test2"}]}`)
+	return
 }
