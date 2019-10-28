@@ -150,7 +150,7 @@ func searchAPI(w http.ResponseWriter, r *http.Request) {
 	offset := end - pageSize
 	for _, archive := range archivesInfo[response.token:] {
 		// TODO しっかり治す
-		if strings.Contains(archive.Title, words) {
+		if strings.Contains(archive.Title, words) || words == "all" {
 			if response.Total >= offset && response.Total < end {
 				response.Videos = append(response.Videos, archive) // サイズ合わせてる
 			}
