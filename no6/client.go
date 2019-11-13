@@ -5,11 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
-	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -96,65 +96,78 @@ func (c *Client) login(config Config) error {
 	return nil
 }
 
-// GetALLArchivesPage 関数は公式HP上のすべてのアーカイブページをローカルに保存します
-func (c *Client) GetALLArchivesPage() error {
+// GetArchiveseALL 関数は公式HP上のすべてのアーカイブページをローカルに保存します
+func (c *Client) GetArchivesInfoALL() (archivesInfo []*archiveInfo, err error) {
+
+	n, err := c.getArchivesLastPage()
+	if err != nil {
+		return nil, err
+	}
+
+	for i := 1; i < n+1; i++ {
+		time.Sleep(100 * time.Millisecond)
+		arcsInfo, err := c.getArchivesInfo(i)
+		if err != nil {
+			return nil, err
+		}
+		archivesInfo = append(archivesInfo, arcsInfo...)
+	}
+
+	return archivesInfo, nil
+}
+
+func (c *Client) getArchivesLastPage() (int, error) {
 	url := protocol + host + archivesPage
 	req, err := http.NewRequest(http.MethodGet, url, http.NoBody)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return err
+		return 0, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		io.Copy(ioutil.Discard, resp.Body)
+		resp.Body.Close()
+	}()
 
-	f, err := openArchivesPageStoreFile(1)
+	n, err := extractLastPage(resp.Body)
 	if err != nil {
-		return err
+		return 0, err
 	}
-	defer f.Close()
-
-	io.Copy(f, resp.Body)
-
-	f.Seek(0, os.SEEK_SET)
-	n, err := extractLastPage(f)
-	if err != nil {
-		return err
-	}
-
-	for i := 2; i < n+1; i++ {
-		time.Sleep(100 * time.Millisecond)
-		if err := c.getArchivesPage(i); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return n, nil
 }
 
-func (c *Client) getArchivesPage(n int) error {
+func (c *Client) getArchivesInfo(pageNumber int) ([]*archiveInfo, error) {
+	resp, err := c.getArchivesPage(pageNumber)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		io.Copy(ioutil.Discard, resp.Body)
+		resp.Body.Close()
+	}()
+
+	archivesInfo, err := extractArchivesInfo(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	return archivesInfo, nil
+}
+
+func (c *Client) getArchivesPage(n int) (*http.Response, error) {
 	url := protocol + host + archivesPage
 	req, err := http.NewRequest(http.MethodGet, url, http.NoBody)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	req.URL.RawQuery = fmt.Sprintf("page=%d", n)
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	defer resp.Body.Close()
-
-	f, err := openArchivesPageStoreFile(n)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	io.Copy(f, resp.Body)
-
-	return nil
+	return resp, nil
 }
 
 func extractLastPage(r io.Reader) (int, error) {

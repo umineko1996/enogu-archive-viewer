@@ -3,16 +3,20 @@ package no6
 import (
 	"bufio"
 	"errors"
-	"fmt"
 	"html"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"regexp"
 	"strings"
 
 	"github.com/gocarina/gocsv"
+)
+
+var (
+	// ArchivesListFile 変数はアーカイブ情報をまとめたcsvファイルです
+	ArchivesListFile = "archives_list.csv"
+	utf8BOM          = []byte{0xEF, 0xBB, 0xBF}
 )
 
 type archiveInfo struct {
@@ -40,45 +44,9 @@ func (a *archiveInfo) checkField() error {
 	return nil
 }
 
-func openArchivesPageStoreFile(n int) (*os.File, error) {
-	if _, err := os.Stat(ArchivesDir); err != nil {
-		if err := os.Mkdir(ArchivesDir, 660); err != nil {
-			fmt.Println(err)
-		}
-	}
-	filename := fmt.Sprintf(FilenameFMT, n)
-	return os.Create(path.Join(ArchivesDir, filename))
-}
-
-var (
-	// ArchivesDir 変数はDLしたアーカイブページを保存するディレクトリを指定します
-	ArchivesDir = "archives"
-	// FilenameFMT 変数はDLしたアーカイブページのファイル名フォーマットを指定します。一か所の整数の置換を含む必要があります
-	FilenameFMT = "page_%03d.html"
-	// ArchivesListFile 変数はアーカイブ情報をまとめたcsvファイルです
-	ArchivesListFile = "archives_list.csv"
-	utf8BOM          = []byte{0xEF, 0xBB, 0xBF}
-)
-
 // MakeArchivesList 関数はlocalにあるアーカイブページのデータからアーカイブの情報を抽出したcsvファイルを生成します
 // 抽出が終わったファイルは削除されます
-func MakeArchivesList() error {
-	files, err := ioutil.ReadDir(ArchivesDir)
-	if err != nil {
-		return err
-	}
-
-	var archivesInfo []*archiveInfo
-	for _, file := range files {
-		filepath := path.Join(ArchivesDir, file.Name())
-		arcInfs, err := extractArchivesInfo(filepath)
-		if err != nil {
-			return err
-		}
-		archivesInfo = append(archivesInfo, arcInfs...)
-		os.Remove(filepath)
-	}
-
+func MakeArchivesList(archivesInfo []*archiveInfo) error {
 	f, err := os.Create(ArchivesListFile)
 	if err != nil {
 		return err
@@ -93,18 +61,11 @@ func MakeArchivesList() error {
 		return err
 	}
 
-	os.Remove(ArchivesDir)
 	return nil
 }
 
-func extractArchivesInfo(filename string) ([]*archiveInfo, error) {
-	f, err := os.OpenFile(filename, os.O_RDONLY, 660)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	arcItems, err := extractArchiveItems(f)
+func extractArchivesInfo(r io.Reader) ([]*archiveInfo, error) {
+	arcItems, err := extractArchiveItems(r)
 	if err != nil {
 		return nil, err
 	}

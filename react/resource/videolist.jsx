@@ -16,7 +16,6 @@ function VideoBoxList(props) {
 
 
 function VideoBox(props) {
-        // TODO ここでvideos変数の整形をする
         let v = props.video
         return (
                 <li className='archive-items_item'><a target="_blank" href={v.url}>
